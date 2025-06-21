@@ -82,7 +82,7 @@ public class SQLParser {
     }
 
 
-    // /////////////////////////////////
+
 
     public Object parseAndExecute(String query, DatabaseService databaseService) {
         String[] tokens = query.split("\\s+");
