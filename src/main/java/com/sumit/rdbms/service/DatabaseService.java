@@ -1,11 +1,10 @@
 package com.sumit.rdbms.service;
 
-import com.sumit.rdbms.Models.Column;
-import com.sumit.rdbms.Models.Condition;
-import com.sumit.rdbms.Models.Table;
+import com.sumit.rdbms.Models.*;
 import com.sumit.rdbms.exception.DatabaseException;
 import com.sumit.rdbms.repository.TableRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,6 +16,10 @@ public class DatabaseService {
 
     @Autowired
     private TableRepository tableRepository;
+
+    @Autowired
+    @Lazy
+    private JoinService joinService;
 
     public void createTable(String tableName, List<Column> columns) {
         if (tableRepository.exists(tableName)) {
@@ -82,6 +85,17 @@ public class DatabaseService {
 
     public List<String> listTables() {
         return tableRepository.listTables();
+    }
+
+    // New JOIN methods
+    public JoinResult performJoin(String leftTableName, String rightTableName,
+                                  JoinType joinType, JoinCondition joinCondition) {
+        return joinService.performJoin(leftTableName, rightTableName, joinType, joinCondition);
+    }
+
+    public JoinResult performHashJoin(String leftTableName, String rightTableName,
+                                      JoinType joinType, JoinCondition joinCondition) {
+        return joinService.performHashJoin(leftTableName, rightTableName, joinType, joinCondition);
     }
 
 }

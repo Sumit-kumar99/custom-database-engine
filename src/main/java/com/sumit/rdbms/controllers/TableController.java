@@ -1,8 +1,10 @@
 package com.sumit.rdbms.controllers;
 
 import com.sumit.rdbms.Models.EqualCondition;
+import com.sumit.rdbms.Models.JoinResult;
 import com.sumit.rdbms.Models.Table;
 import com.sumit.rdbms.dto.CreateTableRequest;
+import com.sumit.rdbms.dto.JoinRequest;
 import com.sumit.rdbms.exception.DatabaseException;
 import com.sumit.rdbms.service.DatabaseService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -76,6 +78,53 @@ public class TableController {
         try {
             Table table = databaseService.getTable(tableName);
             return ResponseEntity.ok().body(table);
+        } catch (DatabaseException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // New JOIN endpoint
+    @PostMapping("/join")
+    public ResponseEntity<?> performJoin(@RequestBody JoinRequest request) {
+        try {
+            JoinResult result = databaseService.performJoin(
+                    request.getLeftTableName(),
+                    request.getRightTableName(),
+                    request.getJoinType(),
+                    request.getJoinCondition()
+            );
+
+            return ResponseEntity.ok().body(Map.of(
+                    "columns", result.getColumns(),
+                    "rows", result.getRows(),
+                    "leftTable", result.getLeftTableName(),
+                    "rightTable", result.getRightTableName(),
+                    "rowCount", result.getRows().size()
+            ));
+        } catch (DatabaseException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // Hash JOIN endpoint for better performance
+    @PostMapping("/hash-join")
+    public ResponseEntity<?> performHashJoin(@RequestBody JoinRequest request) {
+        try {
+            JoinResult result = databaseService.performHashJoin(
+                    request.getLeftTableName(),
+                    request.getRightTableName(),
+                    request.getJoinType(),
+                    request.getJoinCondition()
+            );
+
+            return ResponseEntity.ok().body(Map.of(
+                    "columns", result.getColumns(),
+                    "rows", result.getRows(),
+                    "leftTable", result.getLeftTableName(),
+                    "rightTable", result.getRightTableName(),
+                    "rowCount", result.getRows().size(),
+                    "joinMethod", "hash"
+            ));
         } catch (DatabaseException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

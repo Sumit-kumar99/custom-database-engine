@@ -18,25 +18,12 @@ public class Table implements Serializable {
         this.indices = new HashMap<>();
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public List<Column> getColumns() {
-        return columns;
-    }
-
-    public void setColumns(List<Column> columns) {
-        this.columns = columns;
-    }
-
-    public List<Map<String, Object>> getRows() {
-        return rows;
-    }
+    // Getters and setters
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public List<Column> getColumns() { return columns; }
+    public void setColumns(List<Column> columns) { this.columns = columns; }
+    public List<Map<String, Object>> getRows() { return rows; }
 
     public void setRows(List<Map<String, Object>> rows) {
         this.rows = rows;
@@ -65,13 +52,8 @@ public class Table implements Serializable {
         }
 
         // Verify column exists
-        boolean columnExists = false;
-        for (Column column : columns) {
-            if (column.getName().equals(columnName)) {
-                columnExists = true;
-                break;
-            }
-        }
+        boolean columnExists = columns.stream()
+                .anyMatch(column -> column.getName().equals(columnName));
 
         if (!columnExists) {
             throw new IllegalArgumentException("Column does not exist: " + columnName);
@@ -97,7 +79,19 @@ public class Table implements Serializable {
         return indices.get(indexName);
     }
 
-    public List<Map<String, Object>> selectWithIndex(EqualCondition condition) {
+    // Enhanced select with B-Tree range query support
+    public List<Map<String, Object>> selectWithIndex(Condition condition) {
+        if (condition instanceof EqualCondition) {
+            return selectWithEqualCondition((EqualCondition) condition);
+        } else if (condition instanceof RangeCondition) {
+            return selectWithRangeCondition((RangeCondition) condition);
+        } else {
+            // Fall back to full table scan
+            return select(condition);
+        }
+    }
+
+    private List<Map<String, Object>> selectWithEqualCondition(EqualCondition condition) {
         // Find an appropriate index
         TableIndex matchingIndex = null;
         for (TableIndex index : indices.values()) {
@@ -110,6 +104,36 @@ public class Table implements Serializable {
         if (matchingIndex != null) {
             // Use index for query
             List<Integer> rowIndices = matchingIndex.findRows(condition.getValue());
+            List<Map<String, Object>> result = new ArrayList<>();
+
+            for (Integer rowIndex : rowIndices) {
+                if (rowIndex < rows.size()) {
+                    result.add(new HashMap<>(rows.get(rowIndex)));
+                }
+            }
+
+            return result;
+        } else {
+            // Fall back to full table scan
+            return select(condition);
+        }
+    }
+
+    private List<Map<String, Object>> selectWithRangeCondition(RangeCondition condition) {
+        // Find a B-Tree index for the column
+        TableIndex matchingIndex = null;
+        for (TableIndex index : indices.values()) {
+            if (index.getColumnName().equals(condition.getColumn()) &&
+                    index.getIndexType() == IndexType.BTREE) {
+                matchingIndex = index;
+                break;
+            }
+        }
+
+        if (matchingIndex != null) {
+            // Use B-Tree index for range query
+            List<Integer> rowIndices = matchingIndex.findRowsInRange(
+                    condition.getMinValue(), condition.getMaxValue());
             List<Map<String, Object>> result = new ArrayList<>();
 
             for (Integer rowIndex : rowIndices) {
